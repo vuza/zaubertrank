@@ -1,3 +1,4 @@
+// fucking comment
 const express = require('express');
 
 const app = express();
@@ -113,7 +114,7 @@ app.post('/qr', (req, res, next) => {
 //user can check his objcounts in collectDB
 //req syntax:  http GET localhost:4001/collect userID=2
 
-app.get('/collect', (req, res, next) => {
+app.post('/collect', (req, res, next) => {
     const collectIndex = getIndexByValue(collectDB, 'userID', req.body.userID);
     if (collectIndex !== -1) {
         res.status(200).send(collectDB[collectIndex].sources);
