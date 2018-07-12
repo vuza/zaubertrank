@@ -10,7 +10,7 @@ const db = {} // TODO use mongoDb? https://www.npmjs.com/package/mongodb
 
 // http POST localhost:8080/ausgeschaenkt glasId=3 lokalId=2 bierId=89
 
-app.post('/ausgeschaenkt', (req, res) => {
+app.post('/ausgeschenkt', (req, res) => {
     const glasId = req.body.glasId
     const lokalId = req.body.lokalId
     const bierId = req.body.bierId
