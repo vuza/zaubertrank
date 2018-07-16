@@ -100,14 +100,14 @@ app.post('/qr', (req, res, next) => {
             unlockDB[unlockIndex].unlockBoolean = false;
             console.log(collectDB);
             console.log(unlockDB);
-            res.status(201).send(collectDB);
+            res.status(201).send(true);
         }
         else {
-            res.status(201).send(false);
+            res.status(200).send(false);
         }
     }
     else {
-        res.status(201).send(false);
+        res.status(404).send();
     }
 })
 
