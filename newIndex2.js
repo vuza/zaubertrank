@@ -1,4 +1,4 @@
-// fucking comment
+
 const express = require('express');
 
 const app = express();
@@ -98,12 +98,15 @@ app.post('/qr', (req, res, next) => {
 
             }
             unlockDB[unlockIndex].unlockBoolean = false;
+            // sets unlock boolean back to false
             console.log(collectDB);
             console.log(unlockDB);
             res.status(201).send(true);
+            // sends true if scan was sucessful
         }
         else {
             res.status(200).send(false);
+            // sends false is boolean was set to false
         }
     }
     else {
