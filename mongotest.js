@@ -11,14 +11,16 @@ app.use(bodyParser.urlencoded({extended: true})) // only looks at requests where
 
 
 //helper functions & classes
-var mongo = require('mongodb');
-var MongoClient = require('mongodb').MongoClient;
-var url = "mongodb://seeebert:bussibaby2018@ds247191.mlab.com:47191/zaubertrank";
+const mongo = require('mongodb');
+const MongoClient = require('mongodb').MongoClient;
+const url = "mongodb://seeebert:bussibaby2018@ds247191.mlab.com:47191/zaubertrank";
 const databaseName = "zaubertrank"
+
+// creating the 2 collections
 
 MongoClient.connect(url, function(err, db) {
     if (err) throw err;
-    var dbo = db.db(databaseName);
+    const dbo = db.db(databaseName);
     dbo.createCollection("collectDB", function(err, res) {
         if (err) throw err;
         console.log("Collection collectDB created!");
@@ -28,13 +30,18 @@ MongoClient.connect(url, function(err, db) {
 
   MongoClient.connect(url, function(err, db) {
     if (err) throw err;
-    var dbo = db.db(databaseName);
+    const dbo = db.db(databaseName);
     dbo.createCollection("unlockDB", function(err, res) {
       if (err) throw err;
       console.log("Collection unlockDB created!");
       db.close();
     });
   });
+// Objects of unlockDB and collectDB will have the following form
+  // [{objID: 123, sourceID: 321, unlockBoolean: true}]
+// [{userID: 123, sources: [{sourceID: 321, objCount: 2}, {sourceID: 123, objCount: 3}]]]
+
+
 
 class UnlockClass {  //creates objects for the unlockDB
     constructor(objID, sourceID, unlockBoolean) {
@@ -44,43 +51,11 @@ class UnlockClass {  //creates objects for the unlockDB
     }
   }
 
-  /*class CollectClass { //creates objects for the collectDB
-    constructor(userID, sourceID, sourceName) {
-      this.objID = objID;
-      this.sourceID = sourceID;
-      this.sourceName = sourceName;
-    }
-  }
-*/
-// 2 arrays to handle the database:
-
-// [{objID: 123, sourceID: 321, unlockBoolean: true}]
-
-
-// [{userID: 123, sources: [{sourceID: 321, objCount: 2}, {sourceID: 123, objCount: 3}]]]
-
 
 /*
 3 URLs are necessary for the requests. /rfid, /qr, /collect
 */
 
-app.post('/test', (req, res, next) => {
-    MongoClient.connect(url, function(err, db) {
-        if (err) throw err;
-        var dbo = db.db(databaseName)
-        var foundObj = []
-        dbo.collection("unlockDB").find(
-            { objID : req.body.objID }
-        ).toArray(function(err, results) {
-            if (err) throw err;
-            console.log(results);
-            foundObj = results
-            db.close();
-        console.log(foundObj);
-        res.status(201).send(); //does this have to be withing mongo code? (because async?)
-            }) 
-  })
-})
 
 //send new object to unlockDB via /rfid (for RFID Scanner)
 //req syntax:  http POST localhost:4001/rfid objID=3 sourceID=2
@@ -94,7 +69,6 @@ app.post('/test', (req, res, next) => {
             var newValue = { $set: newObj}
             dbo.collection("unlockDB").update(
                 myquery, newValue, //upserts the object with sourceID, objID and boolean
-                // if error is found - only put sourceID and boolean in newObj
                 {upsert : true},
                 function(err, res) {
                     if (err) throw err;
@@ -107,7 +81,7 @@ app.post('/test', (req, res, next) => {
                     res.status(201).send(results)
                     db.close();
                   } )
-             ; //does this have to be withing mongo code? (because async?)
+             ;
             }) 
   })
 
@@ -119,6 +93,7 @@ app.post('/qr', (req, res, next) => {
     MongoClient.connect(url, function(err, db) {
         if (err) throw err;
         var dbo = db.db(databaseName)
+        var foundObj = []
             dbo.collection("unlockDB").findOne(
                 { objID : req.body.objID },
                 function(err, results) {
@@ -126,68 +101,84 @@ app.post('/qr', (req, res, next) => {
                 console.log(results);
                 foundObj = results;
                 
-        if (foundObj) {
-            if (foundObj.unlockBoolean) {
-                    dbo.collection("collectDB").update(
-                        { userID : req.body.userID },
-                        { $setOnInsert : { userID : req.body.userID, sources : [] } },
-                        {upsert : true},
-                        function(err, res) {
-                            if (err) throw err;
-                            console.log("Checking if UserID has to be added");
-                            db.close();
-                          });
-                     
-                     dbo.collection("collectDB").update(
-                        { userID : req.body.userID,  "sources.sourceID" : { $ne: foundObj.sourceID}},
-                        { $push : { sources : {sourceID : foundObj.sourceID, objCount : 0} } },
-                        {upsert : true},
-                        function(err, result) {
-                            if (err) throw err;
-                            console.log("Checking if source needs to be added");
-                            db.close();
-                          });
-                     
-                     dbo.collection("collectDB").update(
-                        { userID : req.body.userID, "sources.sourceID" : foundObj.sourceID },
-                        { $inc : { "sources.$.objCount" : 1 }},
-                        function(err, result) {
-                            if (err) throw err;
-                            console.log("objCount incremented");
-                            db.close();
-                          });
-                     
-     
-                
-                dbo.collection("unlockDB").update(
-                    { objID : req.body.objID },
-                    { $set: { unlockBoolean : false}},
-                    function(err, res) {
-                        if (err) throw err;
-                        console.log("Boolean set to false");
-                        db.close();
-                      });
-                
-                // sets unlock boolean back to false
-                res.status(201).send(true);
-                // sends true if scan was sucessful
+                if (foundObj) { // is object in database?
+                    if (foundObj.unlockBoolean) { // object activated?
+                        
+                        var userObj = []
+                        dbo.collection("collectDB").findOne(
+                          { userID : req.body.userID, "sources.sourceID" : foundObj.sourceID },
+                          function(err, results) {
+                          if (err) throw err;
+                          userObj = results;
+
+                          if (userObj) {
+                            dbo.collection("collectDB").update( // increment object count
+                              { userID : req.body.userID, "sources.sourceID" : foundObj.sourceID },
+                              { $inc : { "sources.$.objCount" : 1 }},
+                              function(err, result) {
+                                  if (err) throw err;
+                                  console.log("objCount incremented");
+                                  dbo.collection("unlockDB").update( // set boolean to fals after scan was successful
+                                    { objID : req.body.objID },
+                                    { $set: { unlockBoolean : false}},
+                                    function(err, res) {
+                                        if (err) throw err;
+                                        console.log("Boolean set to false");
+                                        db.close();
+                                       
+                                        });
+                          })} 
+                          else {
+                            dbo.collection("collectDB").update( //create user if needed. Otherwise does nothing
+                              { userID : req.body.userID },
+                              { $setOnInsert : { userID : req.body.userID, sources : [] } },
+                              {upsert : true},
+                              function(err, res) {
+                                  if (err) throw err;
+                                  console.log("Checking if UserID has to be added");
+                                  dbo.collection("collectDB").update( // created object for that sourceID if not in DB. Otherwise does nothing
+                                    { userID : req.body.userID},
+                                    { $push : { sources : {sourceID : foundObj.sourceID, objCount : 1} } },
+                                    {upsert : true},
+                                    function(err, result) {
+                                        if (err) throw err;
+                                        console.log("Source added");
+                                        dbo.collection("unlockDB").update( // set boolean to fals after scan was successful
+                                            { objID : req.body.objID },
+                                            { $set: { unlockBoolean : false}},
+                                            function(err, res) {
+                                                if (err) throw err;
+                                                console.log("Boolean set to false");
+                                                db.close();
+                                                    
+                                                    });
+                                       
+                                      });
+                                });
+                              }
+                          })
+                          
+
+                          
+                          // sets unlock boolean back to false
+                          res.status(201).send(true);
+                          // sends true if scan was sucessful
             }
-            else {
+                      else {
                 res.status(200).send(false);
                 // sends false is boolean was set to false
             }
         }
-        else {
+              else {
             res.status(404).send();
         }
-        db.close();
     }); 
     }
     )
 })
 
 //user can check his objcounts in collectDB
-//req syntax:  http GET localhost:4001/collect userID=2
+//req syntax:  http POST localhost:4001/collect userID=2
 
 app.post('/collect', (req, res, next) => {
     MongoClient.connect(url, function(err, db) {

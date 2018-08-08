@@ -31,14 +31,7 @@ class UnlockClass {  //creates objects for the unlockDB
     }
   }
 
-  /*class CollectClass { //creates objects for the collectDB
-    constructor(userID, sourceID, sourceName) {
-      this.objID = objID;
-      this.sourceID = sourceID;
-      this.sourceName = sourceName;
-    }
-  }
-*/
+  
 // 2 arrays to handle the database:
 
 // [{objID: 123, sourceID: 321, unlockBoolean: true}]
